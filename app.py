@@ -34,12 +34,26 @@ def write_favorites(favorites):
         json.dump(favorites, file, indent=4)
 
 
-#message to show its running
+# checks if a fav exists
+def favorite_exists(favorites, user_id, item_id):
+    for favorite in favorites:
+        if favorite["user_id"] == user_id and favorite["item_id"] == item_id:
+            return True
+    return False
+
+
+# gets specific favorite from favorites
+def get_favorite(favorites, user_id, item_id):
+    for favorite in favorites:
+        if favorite["user_id"] == user_id and favorite["item_id"] == item_id:
+            return favorite
+    return None
+
+
+# message to show its running
 @app.route("/", methods=["GET"])
 def home():
-    return jsonify({
-        "message": "Favorites / Bookmarks Microservice is running."
-    }), 200
+    return jsonify({"message": "Favorites / Bookmarks Microservice is running."}), 200
 
 
 # Add a fav
@@ -48,9 +62,7 @@ def add_favorite():
     data = request.get_json()
 
     if data is None:
-        return jsonify({
-            "error": "Request body must be JSON"
-        }), 400
+        return jsonify({"error": "Request body must be JSON"}), 400
 
     user_id = data.get("user_id")
     item_id = data.get("item_id")
@@ -58,35 +70,37 @@ def add_favorite():
     name = data.get("name", "")
 
     if not user_id or not item_id or not item_type:
-        return jsonify({
-            "error": "Missing required fields: user_id, item_id, and item_type are required"
-        }), 400
+        return jsonify(
+            {
+                "error": "Missing required fields: user_id, item_id, and item_type are required"
+            }
+        ), 400
 
     favorites = read_favorites()
 
     # Check if this fav is already saved for user
-    for favorite in favorites:
-        if favorite["user_id"] == user_id and favorite["item_id"] == item_id:
-            return jsonify({
+    if favorite_exists(favorites, user_id, item_id):
+        return jsonify(
+            {
                 "message": "Favorite already exists",
-                "favorite": favorite
-            }), 200
+                "favorite": get_favorite(favorites, user_id, item_id),
+            }
+        ), 200
 
     new_favorite = {
         "user_id": user_id,
         "item_id": item_id,
         "item_type": item_type,
         "name": name,
-        "saved_date": str(date.today())
+        "saved_date": str(date.today()),
     }
 
     favorites.append(new_favorite)
     write_favorites(favorites)
 
-    return jsonify({
-        "message": "Favorite added successfully",
-        "favorite": new_favorite
-    }), 201
+    return jsonify(
+        {"message": "Favorite added successfully", "favorite": new_favorite}
+    ), 201
 
 
 # gets all favs of a user
@@ -95,9 +109,7 @@ def get_favorites():
     user_id = request.args.get("user_id")
 
     if not user_id:
-        return jsonify({
-            "error": "Missing required parameter: user_id"
-        }), 400
+        return jsonify({"error": "Missing required parameter: user_id"}), 400
 
     favorites = read_favorites()
 
@@ -107,10 +119,7 @@ def get_favorites():
         if favorite["user_id"] == user_id:
             user_favorites.append(favorite)
 
-    return jsonify({
-        "user_id": user_id,
-        "favorites": user_favorites
-    }), 200
+    return jsonify({"user_id": user_id, "favorites": user_favorites}), 200
 
 
 # Removes a fav
@@ -119,17 +128,15 @@ def remove_favorite():
     data = request.get_json()
 
     if data is None:
-        return jsonify({
-            "error": "Request body must be JSON"
-        }), 400
+        return jsonify({"error": "Request body must be JSON"}), 400
 
     user_id = data.get("user_id")
     item_id = data.get("item_id")
 
     if not user_id or not item_id:
-        return jsonify({
-            "error": "Missing required fields: user_id and item_id are required"
-        }), 400
+        return jsonify(
+            {"error": "Missing required fields: user_id and item_id are required"}
+        ), 400
 
     favorites = read_favorites()
 
@@ -142,16 +149,12 @@ def remove_favorite():
         else:
             new_favorites.append(favorite)
 
-    if removed == False:
-        return jsonify({
-            "error": "Favorite not found"
-        }), 404
+    if not removed:
+        return jsonify({"error": "Favorite not found"}), 404
 
     write_favorites(new_favorites)
 
-    return jsonify({
-        "message": "Favorite removed successfully"
-    }), 200
+    return jsonify({"message": "Favorite removed successfully"}), 200
 
 
 if __name__ == "__main__":
